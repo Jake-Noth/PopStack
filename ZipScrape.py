@@ -4,108 +4,124 @@ from selenium.webdriver.common.keys import Keys
 import time
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.actions.action_builder import ActionBuilder
+from job_module import Job
 
-options = uc.ChromeOptions()
-driver = uc.Chrome(options=options, use_subprocess=True)
 
-loaction = 'chicago'
-title = 'software developer'
+def get_jobs():
 
-page_number = [
-    '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[2]/a',
-    '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[3]/a',
-    '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[4]/a',
-    '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[5]/a'
-]
+    options = uc.ChromeOptions()
+    driver = uc.Chrome(options=options, use_subprocess=True)
 
-all_jobs = []
+    loaction = 'Austin, Texas'
+    title = 'software developer'
 
-# .clear() doesnt work on mac
-def clear_searchbox(element, blank=''):
-    while element.get_attribute("value") != blank:
-        input_text = element.get_attribute("value")
-        if input_text is not None:
-            for _ in range(len(input_text)):
-                element.send_keys(Keys.BACKSPACE)
+    jobs = []
 
-def scrape_job():
-    
-    title_xpath = '//*[@id="react-job-results-root"]/div/div[2]/div[2]/div[1]/div[1]/h1'
-    while(True):
-        try:
-            title_element = driver.find_element(By.XPATH, title_xpath)
-            break
-        except:
-            None
+    page_number = [
+        '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[2]/a',
+        '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[3]/a',
+        '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[4]/a',
+        '//*[@id="react-job-results-root"]/div/div[1]/div[22]/div[1]/div[5]/a'
+    ]
 
-    title_element = driver.find_element(By.XPATH, title_xpath)
-    title_text = title_element.text
+    # .clear() doesnt work on mac
+    def clear_searchbox(element, blank=''):
+        while element.get_attribute("value") != blank:
+            input_text = element.get_attribute("value")
+            if input_text is not None:
+                for _ in range(len(input_text)):
+                    element.send_keys(Keys.BACKSPACE)
 
-    company_xpath = '//*[@id="react-job-results-root"]/div/div[2]/div[2]/div[1]/div[2]/a'
-    company_element = driver.find_element(By.XPATH, company_xpath)
-    company_text = company_element.text
-    
-    identifier = title_text + ' ' + company_text
-    return identifier
-    
+    def scrape_job():
+        
+        title_xpath = '//*[@id="react-job-results-root"]/div/div[2]/div[2]/div[1]/div[1]/h1'
+        while(True):
+            try:
+                title_element = driver.find_element(By.XPATH, title_xpath)
+                break
+            except:
+                None
 
-def click_job():
-    action = ActionBuilder(driver)
-    action.pointer_action.move_to_location(100, 200)
-    action.pointer_action.click()
-    action.perform()
+        title_element = driver.find_element(By.XPATH, title_xpath)
+        title_text = title_element.text
 
-def scroll(scrollable_element):
-    driver.execute_script("arguments[0].scrollBy(0, 100);", scrollable_element)
+        company_xpath = '//*[@id="react-job-results-root"]/div/div[2]/div[2]/div[1]/div[2]/a'
+        company_element = driver.find_element(By.XPATH, company_xpath)
+        company_text = company_element.text
+        
+        identifier = title_text + ' ' + company_text
 
-def scrape_page():
-    
+        description_element = driver.find_element(By.XPATH, '//*[@id="react-job-results-root"]/div/div[2]/div[2]/div[2]/div')
+        description_text = description_element.text
 
-    job_list = []
-    while(len(job_list)<20):
-        scrollable_element = driver.find_element(By.XPATH, '//*[@id="react-job-results-root"]/div/div[1]')
-        click_job()
 
-        try:
-            job_identifier = scrape_job()
-            if job_identifier not in job_list:
-                job_list.append(job_identifier)
-        except:
-            None
-
-        scroll(scrollable_element)
-    all_jobs.append(job_list)
+        return title_text, company_text, description_text
         
 
+    def click_job():
+        action = ActionBuilder(driver)
+        action.pointer_action.move_to_location(100, 200)
+        action.pointer_action.click()
+        action.perform()
 
-def load_job_site():
-    driver.get('https://www.ziprecruiter.com/')
+    def scroll(scrollable_element):
+        driver.execute_script("arguments[0].scrollBy(0, 100);", scrollable_element)
 
-    keyword_searchbox = driver.find_element(By.XPATH, '//*[@id=":R4pmja:-input"]')
-    location_searchbox = driver.find_element(By.XPATH, '//*[@id=":R6pmja:-input"]')
-    search_button = driver.find_element(By.XPATH, '//*[@id=":R8pmja:"]')
+    def scrape_page():
 
-    clear_searchbox(location_searchbox)
+        scrollable_element = driver.find_element(By.XPATH, '//*[@id="react-job-results-root"]/div/div[1]')
+        job_id_list = []
 
-    keyword_searchbox.send_keys(title)
-    location_searchbox.send_keys(loaction)
+        while(len(job_id_list)<20):
+            
+            click_job()
 
-    search_button.click()
+            try:
+                job_tuple = scrape_job()
+                title = job_tuple[0]
+                company = job_tuple[1]
+                description = job_tuple[2]
 
-load_job_site()
+                job_identifier = title+company
+                
 
-for index in range(5):
-    scrape_page()
-    
-    if index < 4:
-        next_page = driver.find_element(By.XPATH,page_number[index])
-        next_page.click()
-    
+                if job_identifier not in job_id_list:
+                    job_id_list.append(job_identifier)
+                    job = Job(title, company, description)
+                    jobs.append(job)
+                    
+            except:
+                None
 
-print(len(all_jobs))
-print(all_jobs)
+            scroll(scrollable_element)
+            
 
 
+    def load_job_site():
+        driver.get('https://www.ziprecruiter.com/')
 
-driver.quit()
+        keyword_searchbox = driver.find_element(By.XPATH, '//*[@id=":R4pmja:-input"]')
+        location_searchbox = driver.find_element(By.XPATH, '//*[@id=":R6pmja:-input"]')
+        search_button = driver.find_element(By.XPATH, '//*[@id=":R8pmja:"]')
+
+        clear_searchbox(location_searchbox)
+
+        keyword_searchbox.send_keys(title)
+        location_searchbox.send_keys(loaction)
+
+        search_button.click()
+
+
+    load_job_site()
+
+    for index in range(5):
+        scrape_page()
+        
+        if index < 4:
+            next_page = driver.find_element(By.XPATH,page_number[index])
+            next_page.click()
+        
+    driver.quit()
+
+    return jobs
 
